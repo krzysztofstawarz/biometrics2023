@@ -129,11 +129,11 @@ def img_preprocessing(path: str, top_left: Tuple[int, int], bottom_right: Tuple[
     imported_img: np.ndarray = cv2.imread(path)
 
     #  2 doing it in grey
-    grayscale_img = cv2.cvtColor(imported_img, cv2.COLOR_RGB2GRAY)
+    grayscale_img: np.ndarray = cv2.cvtColor(imported_img, cv2.COLOR_RGB2GRAY)
 
     #  3 cropping
-    cropped_img = grayscale_img[top_left[0]:bottom_right[0],
-                                top_left[1]:bottom_right[1]]
+    cropped_img: np.ndarray = grayscale_img[top_left[1]:bottom_right[1],
+                                            top_left[0]:bottom_right[0]]
 
     #  4 resizing
     out_img: np.ndarray = cv2.resize(cropped_img, (IMG_WIDTH, IMG_HEIGHT))
