@@ -219,3 +219,5 @@ if __name__ == "__main__":
               correct_n / float(len(test_lbl)), correct_n, len(test_lbl)))
 
     quit()
+
+    #  Krzysztof Stawarz
