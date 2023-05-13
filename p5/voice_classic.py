@@ -1,15 +1,31 @@
+"""
+    Voice Classification using MFCC and Gaussian Mixtures
+    Krzysztof Stawarz
+    Kraków, Sun 14 May
+
+"""
+
+# task tools
 import numpy as np
 import os
 import librosa
 from sklearn.mixture import GaussianMixture
 from typing import List
 
+# visualization tools
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def gmm_train(paths: List[str], n_mfcc, n_components) -> List[object]:
+def gmm_train(paths: List[str], n_mfcc: int, n_components: int) -> List[object]:
+
+    """
+    :param paths: paths to training recording
+    :param n_mfcc: number of MFCC's
+    :param n_components: number of Gaussian Mixture components
+    :return: list of GM models
+    """
 
     gmm_list: List[object] = list()
 
@@ -21,26 +37,28 @@ def gmm_train(paths: List[str], n_mfcc, n_components) -> List[object]:
         # extract MFCC features for train recording
         m = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
 
-        # TODO:
-        #   manipulate n_mfcc
-
         # fitting GMM to MFCC features extracted
         gm = GaussianMixture(n_components=n_components, random_state=0).fit(np.transpose(m))
-
-        # TODO:
-        #   manipulate n_components
 
         gmm_list.append(gm)
 
     return gmm_list
 
 
-def gmm_predict(paths: List[str], models, n_mfcc) -> List[int]:
+def gmm_predict(paths: List[str], models: List[object], n_mfcc: int) -> List[int]:
+
+    """
+    :param paths: paths to a training recordings
+    :param models: list of GMM models
+    :param n_mfcc: number of MFCC's
+    :return: list of predicted labels
+    """
 
     predicted_labels: List[int] = list()
 
     # classification
     for file in paths:
+
         # loading test recording
         y, sr = librosa.load(file)
 
@@ -50,13 +68,23 @@ def gmm_predict(paths: List[str], models, n_mfcc) -> List[int]:
         # iterating over GMM's
         scores = [gmm.score(np.transpose(m)) for gmm in models]
 
+        # the highest score is our predicted label
         predicted_label = np.argmax(scores) + 1
         predicted_labels.append(int(predicted_label))
 
     return predicted_labels
 
 
-def get_accuracy(train_files, test_files, n_mfcc=39, n_components=32) -> float:
+def get_accuracy(train_files: List[str], test_files: List[str],
+                 n_mfcc: int = 39, n_components: int = 32) -> float:
+
+    """
+    :param train_files: list of files to train on
+    :param test_files: list of files to test on
+    :param n_mfcc: number of mfcc's
+    :param n_components: number of Gaussian Mixture components
+    :return: fraction of correct classified labels
+    """
 
     gmm_list: List[object] = gmm_train(train_files, n_mfcc=n_mfcc, n_components=n_components)
 
@@ -70,7 +98,7 @@ def get_accuracy(train_files, test_files, n_mfcc=39, n_components=32) -> float:
     return accuracy
 
 
-def main(train_p, test_p) -> None:
+def main(train_p: str, test_p: str) -> None:
 
     # reading train files paths
     train_files = [os.path.join(train_p, file) for file in os.listdir(train_p)]
@@ -80,7 +108,7 @@ def main(train_p, test_p) -> None:
     test_files = [os.path.join(test_p, file) for file in os.listdir(test_p)]
     test_files.sort()
 
-    # set some values for two dynamic parameters to calculate its accuracy
+    # set some values for two dynamic parameters to calculate models accuracy based on them
     mfcc_vals = range(10, 41, 5)  # number of mfcc's in MFCC feature extraction
     n_components_vals = range(10, 41, 5)  # number of components in GaussianMixture model
 
@@ -92,38 +120,40 @@ def main(train_p, test_p) -> None:
     # create DataFrame to visualize data
     rows, columns, values = zip(*[(k[0], k[1], v) for k, v in accuracies.items()])
 
-    df = pd.DataFrame({'n_mfcc': rows, 'n_components': columns, 'value': values}).pivot(index='n_mfcc',
-                                                                                        columns='n_components',
-                                                                                        values='value')
-    #
-    my_cmap = sns.diverging_palette(240, 10, n=9, as_cmap=True)
+    df = pd.DataFrame({'n_mfcc': rows, 'n_components': columns, 'value': values})\
+        .pivot(index='n_mfcc',
+               columns='n_components',
+               values='value')
 
+    # creating custom colormap
+    my_cmap = sns.diverging_palette(240, 10,
+                                    n=len(np.unique(list(accuracies.values()))),
+                                    as_cmap=True)
+
+    # creating seaborn heatmap
     acc_heatmap = sns.heatmap(df, cmap=my_cmap, annot=True, fmt='.2f', cbar_kws={'label': 'accuracy'})
-    acc_heatmap.invert_yaxis()
 
+    # editing heatmap
+    acc_heatmap.invert_yaxis()
     acc_heatmap.set_title('Classification accuracies')
     acc_heatmap.set_xlabel('Number of Gaussian Mixture components.')
     acc_heatmap.set_ylabel("Number of MFCC's")
 
+    # saving plot to the device
     plt.savefig('accuracies.png', dpi=300, bbox_inches='tight')
 
+    # showing plot
     plt.show()
 
 
 if __name__ == "__main__":
 
     #  insert your absolute path to a downloaded folder with files
-    data_path = "/Users/stawager/Studia/s4/biometrics/5/classic/voices"
-    assert os.path.isabs(data_path), "Your folder path is not absolute"
+    test_path = "/Users/stawager/Studia/s4/biometrics/5/classic/voices/test"
+    train_path = "/Users/stawager/Studia/s4/biometrics/5/classic/voices/train"
 
-    test_path = os.path.join(data_path, os.listdir(data_path)[0])
-    # assert test_path == "/Users/stawager/Studia/s4/biometrics/5/classic/voices/test", \
-    #     "I don't see your test path"
-
-    train_path = os.path.join(data_path, os.listdir(data_path)[1])
-    # assert train_path == "/Users/stawager/Studia/s4/biometrics/5/classic/voices/train", \
-    #     "I don't see your train path"
+    assert os.path.isabs(test_path) and os.path.isabs(train_path), \
+        "Your folders paths are not both absolute"
 
     main(train_path, test_path)
-
     quit()
